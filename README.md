@@ -28,8 +28,6 @@ The API will be available at `http://localhost:5000`.
 Create a `docker-compose.yml` file:
 
 ```yaml
-version: '3.8'
-
 services:
   youtube2text:
     image: ghcr.io/that-one-tom/youtube2text:latest
@@ -49,24 +47,6 @@ Then run:
 ```bash
 docker-compose up -d
 ```
-
-## Local Development Setup
-
-If you want to build and modify the project locally:
-
-1. **Clone the repository.**
-   ```bash
-   git clone <repository-url>
-   cd youtube2text
-   ```
-
-2. **Build and run the Docker container.**
-   ```bash
-   docker-compose up --build
-   ```
-
-3. **Access the API.**
-   The API will be available at `http://localhost:5000`.
 
 ## Usage
 
