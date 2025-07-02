@@ -211,7 +211,7 @@ def get_comments():
             return jsonify({'error': 'Invalid YouTube video ID or URL'}), 400
         
         # Optional parameters
-        limit = request.args.get('limit', type=int)
+        limit = request.args.get('limit', type=int, default=10)
         sort_by = request.args.get('sort_by', 'top')  # 'top' or 'new'
         proxy = request.args.get('proxy')
         
@@ -234,7 +234,7 @@ def get_comments():
                 'getcomments': True,
                 'extractor_args': {
                     'youtube': {
-                        'max_comments': ['100'],  # Max 100 comments, as string in list
+                        'max_comments': [str(limit * 5)],  # Fetch more than the limit to ensure we have enough comments to filter
                         'comment_sort': ['top'] if sort_by.lower() == 'top' else ['new']
                     }
                 }
@@ -290,7 +290,11 @@ def get_comments():
                 # Process comments if any are available
                 if raw_comments and len(raw_comments) > 0:
                     app.logger.info(f"Processing {len(raw_comments)} comments")
-                    
+
+                    # Log the first 3 raw comments for inspection
+                    for idx, raw_comment in enumerate(raw_comments[:3]):
+                        app.logger.info(f"Raw comment {idx}: {raw_comment}")
+
                     try:
                         # Sort comments based on sort_by parameter
                         if sort_by.lower() == 'new':
@@ -301,14 +305,17 @@ def get_comments():
                             raw_comments.sort(key=lambda x: x.get('like_count', 0) if isinstance(x, dict) else 0, reverse=True)
                     except Exception as sort_e:
                         app.logger.error(f"Error sorting comments: {str(sort_e)}")
-                    
-                    # Process comments
+
                     for i, comment in enumerate(raw_comments):
                         try:
                             if not isinstance(comment, dict):
                                 app.logger.warning(f"Comment {i} is not a dict, type: {type(comment)}, value: {comment}")
                                 continue  # Skip invalid comment entries
-                                
+
+                            # Only include root comments (parent == 'root')
+                            if comment.get('parent') != 'root':
+                                continue
+
                             comment_data = {
                                 'author': comment.get('author', ''),
                                 'text': comment.get('text', ''),
@@ -319,7 +326,7 @@ def get_comments():
                                 'time_parsed': comment.get('timestamp', None)
                             }
                             comments.append(comment_data)
-                            
+
                             # Apply limit if specified
                             if limit and len(comments) >= limit:
                                 break

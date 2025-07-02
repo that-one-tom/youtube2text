@@ -92,7 +92,7 @@ curl "http://localhost:5000/transcript?video_id=dQw4w9WgXcQ&proxy=http://proxy.e
 - `/comments`:
   - **Parameters**:
     - `video_id` (string, required) - YouTube video ID or URL.
-    - `limit` (integer, optional) - Maximum number of comments to return (max. 100).
+    - `limit` (integer, optional) - Maximum number of comments to return.
     - `sort_by` (string, optional) - Sort order: "top" or "new" (default: top).
     - `proxy` (string, optional) - Proxy server URL (supports http://proxy:port or http://user:pass@proxy:port).
 
