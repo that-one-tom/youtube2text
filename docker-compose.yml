@@ -2,7 +2,7 @@ services:
   youtube2text-api:
     build: .
     ports:
-      - "8000:5000"
+      - "5000:5000"
     environment:
       - FLASK_ENV=development
     volumes:

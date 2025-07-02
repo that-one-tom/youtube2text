@@ -10,7 +10,49 @@ This project provides a Dockerized REST API that fetches comments and transcript
 - Docker
 - Docker Compose
 
-## Setup
+## Quick Start (Using Pre-built Image)
+
+The easiest way to get started is using the pre-built Docker image from GitHub Container Registry:
+
+### Using Docker
+
+```bash
+# Pull and run the latest image
+docker run -p 5000:5000 ghcr.io/that-one-tom/youtube2text:latest
+```
+
+The API will be available at `http://localhost:5000`.
+
+### Using Docker Compose
+
+Create a `docker-compose.yml` file:
+
+```yaml
+version: '3.8'
+
+services:
+  youtube2text:
+    image: ghcr.io/that-one-tom/youtube2text:latest
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+```
+
+Then run:
+
+```bash
+docker-compose up -d
+```
+
+## Local Development Setup
+
+If you want to build and modify the project locally:
 
 1. **Clone the repository.**
    ```bash
@@ -24,7 +66,7 @@ This project provides a Dockerized REST API that fetches comments and transcript
    ```
 
 3. **Access the API.**
-   The API will be available at `http://localhost:8000`.
+   The API will be available at `http://localhost:5000`.
 
 ## Usage
 
