@@ -224,14 +224,20 @@ def get_comments():
         video_url = f"https://www.youtube.com/watch?v={extracted_id}"
         
         try:
-            # Configure yt-dlp to extract comments
+            # Configure yt-dlp to extract comments with limit (max_comments must be a string in a list)
             ydl_opts = {
                 'writeinfojson': False,
-                'writecomments': True,
-                'getcomments': True,
                 'quiet': True,
                 'no_warnings': True,
                 'extract_flat': False,
+                'writecomments': True,
+                'getcomments': True,
+                'extractor_args': {
+                    'youtube': {
+                        'max_comments': ['100'],  # Max 100 comments, as string in list
+                        'comment_sort': ['top'] if sort_by.lower() == 'top' else ['new']
+                    }
+                }
             }
             
             # Add proxy configuration if provided
@@ -240,41 +246,95 @@ def get_comments():
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 app.logger.info(f"Extracting comments for video: {extracted_id}")
+                
+                # First, extract basic info to see if comments are available
                 info = ydl.extract_info(video_url, download=False)
                 
+                # Check if comments are available in the info
                 raw_comments = info.get('comments', [])
+                try:
+                    raw_comments_info = f"type: {type(raw_comments)}, length/value: {len(raw_comments) if hasattr(raw_comments, '__len__') else raw_comments}"
+                except Exception as log_e:
+                    raw_comments_info = f"type: {type(raw_comments)}, error getting length: {str(log_e)}"
+                app.logger.info(f"Raw comments {raw_comments_info}")
+                
+                # If no comments in main info, try to extract comments specifically
+                if not raw_comments or (hasattr(raw_comments, '__len__') and len(raw_comments) == 0):
+                    app.logger.info("No comments found in initial extraction, trying specific comment extraction")
+                    try:
+                        # Try with comment-specific options
+                        comment_ydl_opts = {
+                            **ydl_opts,
+                            'writecomments': True,
+                            'getcomments': True,
+                        }
+                        with yt_dlp.YoutubeDL(comment_ydl_opts) as comment_ydl:
+                            comment_info = comment_ydl.extract_info(video_url, download=False)
+                            raw_comments = comment_info.get('comments', [])
+                            try:
+                                raw_comments_info2 = f"type: {type(raw_comments)}, length/value: {len(raw_comments) if hasattr(raw_comments, '__len__') else raw_comments}"
+                            except Exception as log_e2:
+                                raw_comments_info2 = f"type: {type(raw_comments)}, error getting length: {str(log_e2)}"
+                            app.logger.info(f"Secondary extraction - Raw comments {raw_comments_info2}")
+                    except Exception as comment_e:
+                        app.logger.warning(f"Failed to extract comments specifically: {str(comment_e)}")
+                        raw_comments = []
+                
                 comments = []
                 
-                # Sort comments based on sort_by parameter
-                if sort_by.lower() == 'new':
-                    # Sort by timestamp (newest first)
-                    raw_comments.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
-                else:  # 'top' or default
-                    # Sort by like_count (most liked first)
-                    raw_comments.sort(key=lambda x: x.get('like_count', 0), reverse=True)
+                # Ensure raw_comments is iterable and a list
+                if not isinstance(raw_comments, list):
+                    app.logger.warning(f"Comments data is not a list, type: {type(raw_comments)}, value: {raw_comments}")
+                    raw_comments = []
                 
-                # Process comments
-                for comment in raw_comments:
-                    comment_data = {
-                        'author': comment.get('author', ''),
-                        'text': comment.get('text', ''),
-                        'votes': comment.get('like_count', 0),
-                        'time': comment.get('timestamp', ''),
-                        'reply_count': 0,  # yt-dlp doesn't provide reply count in the same way
-                        'cid': comment.get('id', ''),
-                        'time_parsed': comment.get('timestamp', None)
-                    }
-                    comments.append(comment_data)
+                # Process comments if any are available
+                if raw_comments and len(raw_comments) > 0:
+                    app.logger.info(f"Processing {len(raw_comments)} comments")
                     
-                    # Apply limit if specified
-                    if limit and len(comments) >= limit:
-                        break
+                    try:
+                        # Sort comments based on sort_by parameter
+                        if sort_by.lower() == 'new':
+                            # Sort by timestamp (newest first)
+                            raw_comments.sort(key=lambda x: x.get('timestamp', 0) if isinstance(x, dict) else 0, reverse=True)
+                        else:  # 'top' or default
+                            # Sort by like_count (most liked first)
+                            raw_comments.sort(key=lambda x: x.get('like_count', 0) if isinstance(x, dict) else 0, reverse=True)
+                    except Exception as sort_e:
+                        app.logger.error(f"Error sorting comments: {str(sort_e)}")
+                    
+                    # Process comments
+                    for i, comment in enumerate(raw_comments):
+                        try:
+                            if not isinstance(comment, dict):
+                                app.logger.warning(f"Comment {i} is not a dict, type: {type(comment)}, value: {comment}")
+                                continue  # Skip invalid comment entries
+                                
+                            comment_data = {
+                                'author': comment.get('author', ''),
+                                'text': comment.get('text', ''),
+                                'votes': comment.get('like_count', 0),
+                                'time': comment.get('timestamp', ''),
+                                'reply_count': comment.get('reply_count', 0),
+                                'cid': comment.get('id', ''),
+                                'time_parsed': comment.get('timestamp', None)
+                            }
+                            comments.append(comment_data)
+                            
+                            # Apply limit if specified
+                            if limit and len(comments) >= limit:
+                                break
+                        except Exception as comment_process_e:
+                            app.logger.error(f"Error processing comment {i}: {str(comment_process_e)}")
+                            continue
+                else:
+                    app.logger.info(f"No comments found for video {extracted_id}")
                 
                 response = {
                     'video_id': extracted_id,
                     'comments': comments,
                     'total_comments': len(comments),
-                    'sort_by': sort_by
+                    'sort_by': sort_by,
+                    'comments_available': len(raw_comments) > 0
                 }
                 
                 if limit:
