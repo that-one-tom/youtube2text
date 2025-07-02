@@ -48,15 +48,38 @@ Then run:
 docker-compose up -d
 ```
 
+## Proxy Support
+
+Both endpoints support proxy servers to help bypass potential IP blocks from YouTube. Simply add the `proxy` parameter to your requests:
+
+### Proxy Formats Supported:
+- `http://proxy.example.com:8080`
+- `https://proxy.example.com:8080`
+- `http://username:password@proxy.example.com:8080`
+
+### Example Usage:
+```bash
+# Using proxy with comments endpoint
+curl "http://localhost:5000/comments?video_id=dQw4w9WgXcQ&proxy=http://proxy.example.com:8080"
+
+# Using proxy with transcript endpoint
+curl "http://localhost:5000/transcript?video_id=dQw4w9WgXcQ&proxy=http://proxy.example.com:8080"
+```
+
+**Note:** Proxy support is particularly useful when:
+- Making requests from IP addresses that YouTube has rate-limited
+- Running the service from regions with YouTube access restrictions
+- Needing to distribute load across multiple IP addresses
+
 ## Usage
 
 - **Fetch Comments**
   ```
-  GET /comments?video_id=<youtube_video_id>&limit=10&sort_by=top
+  GET /comments?video_id=<youtube_video_id>&limit=10&sort_by=top&proxy=http://proxy.example.com:8080
   ```
 - **Fetch Transcript**
   ```
-  GET /transcript?video_id=<youtube_video_id>&languages=en,es
+  GET /transcript?video_id=<youtube_video_id>&languages=en,es&proxy=http://proxy.example.com:8080
   ```
 
 ## Endpoints
@@ -65,11 +88,13 @@ docker-compose up -d
   - **Parameters**: 
     - `video_id` (string, required) - YouTube video ID or URL.
     - `languages` (string, optional) - Comma-separated language codes.
+    - `proxy` (string, optional) - Proxy server URL (supports http://proxy:port or http://user:pass@proxy:port).
 - `/comments`:
   - **Parameters**:
     - `video_id` (string, required) - YouTube video ID or URL.
     - `limit` (integer, optional) - Maximum number of comments to return.
     - `sort_by` (string, optional) - Sort order: "top" or "new" (default: top).
+    - `proxy` (string, optional) - Proxy server URL (supports http://proxy:port or http://user:pass@proxy:port).
 
 ## Credits
 
